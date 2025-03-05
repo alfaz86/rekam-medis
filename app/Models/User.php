@@ -23,6 +23,8 @@ class User extends Authenticatable implements FilamentUser
         'name',
         'email',
         'password',
+        'username',
+        'role',
     ];
 
     /**
@@ -51,12 +53,12 @@ class User extends Authenticatable implements FilamentUser
     const ROLES = [
         'admin' => 'Admin',
         'patient' => 'Patient',
-        // 'doctor' => 'Doctor',
+        'doctor' => 'Doctor',
         'midwife' => 'Midwife',
     ];
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return str_ends_with($this->email, '@mail.test') && $this->hasVerifiedEmail();
+        return true;
     }
 }
