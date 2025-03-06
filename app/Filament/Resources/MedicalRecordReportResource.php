@@ -32,13 +32,13 @@ class MedicalRecordReportResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('patient.name')->label('Pasien')->searchable()->sortable(),
-                TextColumn::make('complaint')->label('Keluhan')->searchable(),
+                TextColumn::make('complaint')->label('Keluhan')->searchable()->sortable(),
                 TextColumn::make('handled_by_id')
                     ->label('Bidan')
                     ->formatStateUsing(fn($record) => $record->handledBy?->name)
-                    ->searchable(),
-                TextColumn::make('diagnosis')->label('Diagnosis')->searchable(),
-                TextColumn::make('room.name')->label('Ruangan')->searchable(),
+                    ->searchable()->sortable(),
+                TextColumn::make('diagnosis')->label('Diagnosis')->searchable()->sortable(),
+                TextColumn::make('room.name')->label('Ruangan')->searchable()->sortable(),
                 TextColumn::make('date')->label('Tanggal')->sortable(),
             ])
             ->filters([
