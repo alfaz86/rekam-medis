@@ -3,15 +3,38 @@
 namespace App\Filament\Resources\MidwifeResource\Pages;
 
 use App\Filament\Resources\MidwifeResource;
+use App\Models\User;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Hash;
 
 class CreateMidwife extends CreateRecord
 {
     protected static string $resource = MidwifeResource::class;
-    protected function mutateFormDataBeforeCreate(array $data): array
+
+    protected function handleRecordCreation(array $data): Model
     {
-        return MidwifeResource::beforeCreate($data);
+        $email = 'midwife_' . time() . '@example.com';
+        $firstLetter = strtolower(explode(' ', $data['name'])[0]);
+        $username = $data['username'] ? $data['username'] : $firstLetter . time();
+        $password = $data['password']
+            ? Hash::make($data['password'])
+            : Hash::make('password');
+
+        $user = new User();
+        $user->name = $data['name'];
+        $user->username = $username;
+        $user->password = $password;
+        $user->email = $email;
+        $user->role = 'midwife';
+        $user->save();
+
+        $data['user_id'] = $user->id;
+
+        $record = static::getModel()::create($data);
+
+        return $record;
     }
 
     protected function getRedirectUrl(): string

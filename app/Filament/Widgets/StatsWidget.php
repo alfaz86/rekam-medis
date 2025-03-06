@@ -17,26 +17,42 @@ class StatsWidget extends StatsOverviewWidget
 {
     protected function getStats(): array
     {
-        return [
-            Stat::make('Total Dokter', Doctor::count())
-                ->description('Klik untuk melihat')
-                ->url(DoctorResource::getUrl())
-                ->icon('heroicon-o-user'),
+        $PCP = env('PCP', 'doctors');
+        $PCP = explode(',', $PCP);
 
-            Stat::make('Total Bidan', Midwife::count())
-                ->description('Klik untuk melihat')
-                ->url(MidwifeResource::getUrl())
-                ->icon('heroicon-o-user'),
+        $doctorStats = Stat::make('Total Dokter', Doctor::count())
+            ->description('Klik untuk melihat')
+            ->url(DoctorResource::getUrl())
+            ->icon('heroicon-o-user');
 
-            Stat::make('Total Pasien', Patient::count())
-                ->description('Klik untuk melihat')
-                ->url(PatientResource::getUrl())
-                ->icon('heroicon-o-user'),
+        $midwifeStats = Stat::make('Total Bidan', Midwife::count())
+            ->description('Klik untuk melihat')
+            ->url(MidwifeResource::getUrl())
+            ->icon('heroicon-o-user');
 
-            Stat::make('Total Obat', Medicine::count())
-                ->description('Klik untuk melihat')
-                ->url(MedicineResource::getUrl())
-                ->icon('heroicon-o-beaker'),
+        $patientStats = Stat::make('Total Pasien', Patient::count())
+            ->description('Klik untuk melihat')
+            ->url(PatientResource::getUrl())
+            ->icon('heroicon-o-user');
+
+        $medicineStats = Stat::make('Total Obat', Medicine::count())
+            ->description('Klik untuk melihat')
+            ->url(MedicineResource::getUrl())
+            ->icon('heroicon-o-beaker');
+
+        $stats = [
+            $patientStats,
+            $medicineStats,
         ];
+
+        if (in_array('doctors', $PCP)) {
+            array_push($stats, $doctorStats);
+        }
+
+        if (in_array('midwives', $PCP)) {
+            array_push($stats, $midwifeStats);
+        }
+
+        return $stats;
     }
 }
