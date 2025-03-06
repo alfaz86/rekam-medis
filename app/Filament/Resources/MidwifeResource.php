@@ -9,38 +9,40 @@ use Filament\Forms;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 
 class MidwifeResource extends Resource
 {
     protected static ?string $model = Midwife::class;
     protected static ?string $navigationIcon = 'heroicon-o-user';
+    protected static ?string $modelLabel = 'Bidan';
+    protected static ?string $pluralModelLabel = 'Data Bidan';
     protected static ?string $navigationLabel = 'Bidan';
-    protected static ?string $breadcrumb = 'Bidan';
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        $model = new Midwife();
-        $tableName = $model->getTable();
-        $APP_USER_TABLE = env('APP_USER_TABLE', 'users');
-        $APP_USER_TABLE = explode(',', $APP_USER_TABLE);
-
-        if (Schema::hasTable($tableName) && in_array($tableName, $APP_USER_TABLE)) {
-            return true;
-        }
-
-        return false;
-    }
 
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form
             ->schema([
                 TextInput::make('name')->label('Nama')->required(),
+                TextInput::make('username')
+                    ->label('Username')
+                    ->required()
+                    ->unique('users', 'username', ignorable: fn($record) => optional($record?->user)->id ? $record->user : null)
+                    ->formatStateUsing(fn($state, $record) => optional($record?->user)->username ?? $state)
+                    ->rules([
+                        'regex:/^[a-zA-Z0-9_]+$/',
+                        'min:3',
+                    ])
+                    ->live()
+                    ->afterStateUpdated(
+                        fn($state, callable $set) =>
+                        $set('username', preg_replace('/[^a-zA-Z0-9_]/', '', $state))
+                    ),
                 TextInput::make('phone_number')->label('No HP')->nullable(),
+                TextInput::make('password')->password()->label('Password')->required(
+                    fn($record) => is_null(optional($record?->user)->id)
+                ),
                 Textarea::make('address')->label('Alamat')->nullable(),
             ]);
     }
@@ -48,14 +50,24 @@ class MidwifeResource extends Resource
     public static function table(Tables\Table $table): Tables\Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
-                TextColumn::make('name')->label('Nama')->sortable()->searchable(),
-                TextColumn::make('phone_number')->label('No HP')->sortable(),
-                TextColumn::make('user.email')->label('Email Akun')->sortable(),
+                Tables\Columns\TextColumn::make('name')->label('Nama')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('user.username')->label('Username')->sortable(),
+                Tables\Columns\TextColumn::make('phone_number')->label('No HP')->sortable(),
+                Tables\Columns\TextColumn::make('address')->label('Alamat')->limit(50),
+            ])
+            ->filters([
+                //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
             ]);
     }
 
@@ -73,23 +85,5 @@ class MidwifeResource extends Resource
             'create' => Pages\CreateMidwife::route('/create'),
             'edit' => Pages\EditMidwife::route('/{record}/edit'),
         ];
-    }
-
-    public static function beforeCreate($data)
-    {
-        $email = 'midwife_' . date('YmdHis') . '@example.com';
-
-        $firstLetter = strtolower(explode(' ', $data['name'])[0]);
-
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $email,
-            'password' => Hash::make('password'),
-            'username' => $firstLetter . time(),
-            'role' => 'midwife',
-        ]);
-
-        $data['user_id'] = $user->id;
-        return $data;
     }
 }

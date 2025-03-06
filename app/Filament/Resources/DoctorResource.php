@@ -25,10 +25,10 @@ class DoctorResource extends Resource
     {
         $model = new Doctor();
         $tableName = $model->getTable();
-        $APP_USER_TABLE = env('APP_USER_TABLE', 'users');
-        $APP_USER_TABLE = explode(',', $APP_USER_TABLE);
+        $PCP = env('PCP', 'doctors');
+        $PCP = explode(',', $PCP);
 
-        if (Schema::hasTable($tableName) && in_array($tableName, $APP_USER_TABLE)) {
+        if (Schema::hasTable($tableName) && in_array($tableName, $PCP)) {
             return true;
         }
 
@@ -40,7 +40,24 @@ class DoctorResource extends Resource
         return $form
             ->schema([
                 TextInput::make('name')->label('Nama')->required(),
+                TextInput::make('username')
+                    ->label('Username')
+                    ->required()
+                    ->unique('users', 'username', ignorable: fn($record) => optional($record?->user)->id ? $record->user : null)
+                    ->formatStateUsing(fn($state, $record) => optional($record?->user)->username ?? $state)
+                    ->rules([
+                        'regex:/^[a-zA-Z0-9_]+$/',
+                        'min:3',
+                    ])
+                    ->live()
+                    ->afterStateUpdated(
+                        fn($state, callable $set) =>
+                        $set('username', preg_replace('/[^a-zA-Z0-9_]/', '', $state))
+                    ),
                 TextInput::make('specialist')->label('Spesialis')->required(),
+                TextInput::make('password')->password()->label('Password')->required(
+                    fn($record) => is_null(optional($record?->user)->id)
+                ),
                 TextInput::make('phone_number')->label('No HP')->nullable(),
                 Textarea::make('address')->label('Alamat')->nullable(),
             ]);
@@ -49,15 +66,22 @@ class DoctorResource extends Resource
     public static function table(Tables\Table $table): Tables\Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('name')->label('Nama')->sortable()->searchable(),
+                TextColumn::make('user.username')->label('Username')->sortable(),
                 TextColumn::make('specialist')->label('Spesialis')->sortable()->searchable(),
                 TextColumn::make('phone_number')->label('No HP')->sortable(),
-                TextColumn::make('user.email')->label('Email Akun')->sortable(),
+                TextColumn::make('address')->label('Alamat')->limit(50),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
             ]);
     }
 
@@ -73,23 +97,5 @@ class DoctorResource extends Resource
             'create' => Pages\CreateDoctor::route('/create'),
             'edit' => Pages\EditDoctor::route('/{record}/edit'),
         ];
-    }
-
-    public static function beforeCreate($data)
-    {
-        $email = 'doctor_' . date('YmdHis') . '@example.com';
-
-        $firstLetter = strtolower(explode(' ', $data['name'])[0]);
-
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $email,
-            'password' => Hash::make('password'),
-            'username' => $firstLetter . time(),
-            'role' => 'doctor',
-        ]);
-
-        $data['user_id'] = $user->id;
-        return $data;
     }
 }

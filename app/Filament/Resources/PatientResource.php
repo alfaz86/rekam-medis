@@ -19,28 +19,18 @@ class PatientResource extends Resource
 {
     protected static ?string $model = Patient::class;
     protected static ?string $navigationIcon = 'heroicon-o-user';
+    protected static ?string $modelLabel = 'Pasien';
+    protected static ?string $pluralModelLabel = 'Data Pasien';
     protected static ?string $navigationLabel = 'Pasien';
-    protected static ?string $breadcrumb = 'Pasien';
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        $model = new Patient();
-        $tableName = $model->getTable();
-        $APP_USER_TABLE = env('APP_USER_TABLE', 'users');
-        $APP_USER_TABLE = explode(',', $APP_USER_TABLE);
-
-        if (Schema::hasTable($tableName) && in_array($tableName, $APP_USER_TABLE)) {
-            return true;
-        }
-
-        return false;
-    }
 
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form
             ->schema([
-                TextInput::make('number_identity')->label('No Identitas')->required(),
+                TextInput::make('number_identity')
+                    ->label('No Identitas')
+                    ->required()
+                    ->unique('patients', 'number_identity'),
                 TextInput::make('name')->label('Nama')->required(),
                 TextInput::make('husband_name')->label('Nama Suami')->nullable(),
                 TextInput::make('age')->label('Usia')->numeric()->required(),
@@ -54,13 +44,14 @@ class PatientResource extends Resource
     public static function table(Tables\Table $table): Tables\Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('number_identity')->label('No Identitas')->sortable()->searchable(),
                 TextColumn::make('name')->label('Nama')->sortable()->searchable(),
                 TextColumn::make('age')->label('Usia')->sortable(),
                 TextColumn::make('birth_date')->label('Tanggal Lahir')->sortable(),
                 TextColumn::make('phone_number')->label('No HP')->sortable(),
-                TextColumn::make('user.email')->label('Email Akun')->sortable(),
+                TextColumn::make('address')->label('Alamat')->limit(50),
             ])
             ->filters([])
             ->actions([
@@ -68,7 +59,9 @@ class PatientResource extends Resource
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
             ]);
     }
 
@@ -100,6 +93,9 @@ class PatientResource extends Resource
             'role' => 'patient',
         ]);
 
+        if ($data['phone_number'] === null) {
+            $data['phone_number'] = '-';
+        }
         $data['user_id'] = $user->id;
 
         return $data;

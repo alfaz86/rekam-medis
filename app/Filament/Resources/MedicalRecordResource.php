@@ -133,16 +133,16 @@ class MedicalRecordResource extends Resource
     {
         $doctors = collect();
         $midwifes = collect();
-        $APP_USER_TABLE = env('APP_USER_TABLE', 'users');
-        $APP_USER_TABLE = explode(',', $APP_USER_TABLE);
+        $PCP = env('PCP', 'doctors');
+        $PCP = explode(',', $PCP);
 
-        if (in_array('doctors', $APP_USER_TABLE)) {
+        if (in_array('doctors', $PCP)) {
             $doctors = Doctor::all()->mapWithKeys(fn($doctor) => [
                 Doctor::class . ':' . $doctor->id => $doctor->name
             ]);
         }
 
-        if (in_array('midwives', $APP_USER_TABLE)) {
+        if (in_array('midwives', $PCP)) {
             $midwifes = Midwife::all()->mapWithKeys(fn($midwife) => [
                 Midwife::class . ':' . $midwife->id => $midwife->name
             ]);
