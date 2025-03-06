@@ -27,7 +27,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class MedicalRecordResource extends Resource
 {
     protected static ?string $model = MedicalRecord::class;
-    protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
     protected static ?string $modelLabel = 'Rekam Medis';
     protected static ?string $pluralModelLabel = 'Rekam Medis';
     protected static ?string $navigationLabel = 'Rekam Medis';
@@ -98,23 +98,29 @@ class MedicalRecordResource extends Resource
             ->columns([
                 TextColumn::make('patient.name')
                     ->label('Pasien')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('complaint')
                     ->label('Keluhan')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('handled_by_id')
                     ->label('Bidan')
                     ->formatStateUsing(fn($record) => $record->handledBy?->name)
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('diagnosis')
                     ->label('Diagnosis')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('room.name')
                     ->label('Ruangan')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('date')
                     ->label('Tanggal')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
             ])
             ->filters([
                 //
