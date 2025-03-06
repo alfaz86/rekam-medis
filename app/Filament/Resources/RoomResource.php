@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Schema;
 class RoomResource extends Resource
 {
     protected static ?string $model = Room::class;
-    protected static ?string $navigationIcon = 'heroicon-o-list-bullet';
+    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
     protected static ?string $modelLabel = 'Ruangan';
     protected static ?string $pluralModelLabel = 'Ruangan';
     protected static ?string $navigationLabel = 'Ruangan';
