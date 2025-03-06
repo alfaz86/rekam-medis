@@ -28,8 +28,9 @@ class MedicalRecordResource extends Resource
 {
     protected static ?string $model = MedicalRecord::class;
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+    protected static ?string $modelLabel = 'Rekam Medis';
+    protected static ?string $pluralModelLabel = 'Rekam Medis';
     protected static ?string $navigationLabel = 'Rekam Medis';
-    protected static ?string $breadcrumb = 'Rekam Medis';
     protected static ?int $navigationSort = 7;
 
     public static function form(Form $form): Form
@@ -38,23 +39,23 @@ class MedicalRecordResource extends Resource
             ->schema([
                 Select::make('patient_id')
                     ->label('Pasien')
-                    ->options(Patient::all()->pluck('name', 'id'))
                     ->searchable()
+                    ->getSearchResultsUsing(
+                        fn(string $search) =>
+                        Patient::where('name', 'like', "%{$search}%")
+                            ->limit(10)
+                            ->pluck('name', 'id')
+                    )
+                    ->getOptionLabelUsing(fn($value) => Patient::find($value)?->name)
                     ->required(),
                 Textarea::make('complaint')
                     ->label('Keluhan')
                     ->required(),
                 Select::make('handled_by_id')
                     ->label('Bidan')
-                    ->live()
-                    ->options(self::getPatientCareTakers())
-                    ->afterStateUpdated(function (Set $set, ?string $state) {
-                        if ($state) {
-                            [$model, $id] = explode(':', $state);
-                            $set('handled_by_type', $model);
-                            $set('handled_by_id', $state);
-                        }
-                    })
+                    ->searchable()
+                    ->getSearchResultsUsing(fn(string $search) => self::searchPatientCareTakers($search))
+                    ->getOptionLabelUsing(fn($value) => self::getPatientCareTakerLabel($value))
                     ->required(),
                 TextInput::make('diagnosis')
                     ->label('Diagnosis')
@@ -62,7 +63,16 @@ class MedicalRecordResource extends Resource
                 Select::make('medicine_ids')
                     ->label('Obat')
                     ->multiple()
-                    ->options(Medicine::all()->pluck('name', 'id'))
+                    ->searchable()
+                    ->getSearchResultsUsing(fn(string $search) =>
+                        Medicine::where('name', 'like', "%{$search}%")
+                            ->limit(10)
+                            ->pluck('name', 'id')
+                            ->toArray())
+                    ->getOptionLabelsUsing(fn(array $values) =>
+                        Medicine::whereIn('id', $values)
+                            ->pluck('name', 'id')
+                            ->toArray())
                     ->required(),
                 Select::make('room_id')
                     ->label('Ruangan')
@@ -129,25 +139,41 @@ class MedicalRecordResource extends Resource
         ];
     }
 
-    public static function getPatientCareTakers(): array
+    public static function searchPatientCareTakers(string $search): array
     {
         $doctors = collect();
-        $midwifes = collect();
-        $PCP = env('PCP', 'doctors');
-        $PCP = explode(',', $PCP);
+        $midwives = collect();
+        $PCP = explode(',', env('PCP', 'doctors'));
 
         if (in_array('doctors', $PCP)) {
-            $doctors = Doctor::all()->mapWithKeys(fn($doctor) => [
-                Doctor::class . ':' . $doctor->id => $doctor->name
-            ]);
+            $doctors = Doctor::where('name', 'like', "%{$search}%")
+                ->limit(10)
+                ->get()
+                ->mapWithKeys(fn($doctor) => [
+                    Doctor::class . ':' . $doctor->id => $doctor->name
+                ]);
         }
 
         if (in_array('midwives', $PCP)) {
-            $midwifes = Midwife::all()->mapWithKeys(fn($midwife) => [
-                Midwife::class . ':' . $midwife->id => $midwife->name
-            ]);
+            $midwives = Midwife::where('name', 'like', "%{$search}%")
+                ->limit(10)
+                ->get()
+                ->mapWithKeys(fn($midwife) => [
+                    Midwife::class . ':' . $midwife->id => $midwife->name
+                ]);
         }
 
-        return $doctors->merge($midwifes)->toArray();
+        return $doctors->merge($midwives)->toArray();
+    }
+
+    public static function getPatientCareTakerLabel($value): ?string
+    {
+        [$model, $id] = explode(':', $value);
+
+        return match ($model) {
+            Doctor::class => Doctor::find($id)?->name,
+            Midwife::class => Midwife::find($id)?->name,
+            default => null
+        };
     }
 }

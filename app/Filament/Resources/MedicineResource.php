@@ -19,8 +19,9 @@ class MedicineResource extends Resource
 {
     protected static ?string $model = Medicine::class;
     protected static ?string $navigationIcon = 'heroicon-o-beaker';
+    protected static ?string $modelLabel = 'Obat';
+    protected static ?string $pluralModelLabel = 'Obat';
     protected static ?string $navigationLabel = 'Obat';
-    protected static ?string $breadcrumb = 'Obat';
     protected static ?int $navigationSort = 6;
 
     public static function form(Form $form): Form
