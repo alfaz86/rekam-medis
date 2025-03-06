@@ -64,15 +64,21 @@ class MedicalRecordResource extends Resource
                     ->label('Obat')
                     ->multiple()
                     ->searchable()
-                    ->getSearchResultsUsing(fn(string $search) =>
+                    ->getSearchResultsUsing(
+                        fn(string $search) =>
                         Medicine::where('name', 'like', "%{$search}%")
                             ->limit(10)
                             ->pluck('name', 'id')
-                            ->toArray())
-                    ->getOptionLabelsUsing(fn(array $values) =>
+                            ->toArray()
+                    )
+                    ->getOptionLabelsUsing(
+                        fn(array $values) =>
                         Medicine::whereIn('id', $values)
                             ->pluck('name', 'id')
-                            ->toArray())
+                            ->toArray()
+                    )
+                    ->relationship('medicines', 'name')
+                    ->default(fn($record) => $record?->medicines->pluck('id')->toArray())
                     ->required(),
                 Select::make('room_id')
                     ->label('Ruangan')
@@ -114,6 +120,7 @@ class MedicalRecordResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -168,7 +175,13 @@ class MedicalRecordResource extends Resource
 
     public static function getPatientCareTakerLabel($value): ?string
     {
-        [$model, $id] = explode(':', $value);
+        $parts = explode(':', $value);
+
+        if (count($parts) !== 2) {
+            return null;
+        }
+
+        [$model, $id] = $parts;
 
         return match ($model) {
             Doctor::class => Doctor::find($id)?->name,
