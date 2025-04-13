@@ -5,7 +5,7 @@ const updateTitleLogin = () => {
     const logo = document.querySelector(targetSelector);
     if (logo && window.location.pathname === '/panel/login') {
       logo.innerHTML = 'Praktik Bidan S. Rahayu Utami';
-      observer.disconnect(); // stop observing setelah berhasil
+      observer.disconnect();
     }
   };
 
@@ -18,7 +18,6 @@ const updateTitleLogin = () => {
     subtree: true,
   });
 
-  // Coba langsung juga saat awal, siapa tahu udah ada
   tryUpdate();
 };
 
