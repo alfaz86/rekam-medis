@@ -13,7 +13,11 @@ class MedicalRecord extends Model
         'handled_by_id',
         'complaint',
         'diagnosis',
-        'date'
+        'date',
+        'medical_history',
+        'examination_results',
+        'medical_treatment',
+        'consultation_and_follow_up'
     ];
 
     public function handledBy()
@@ -35,5 +39,10 @@ class MedicalRecord extends Model
     {
         return $this->belongsToMany(Medicine::class, 'medical_record_medicines')
             ->withTimestamps();
+    }
+
+    public function medicineUsages()
+    {
+        return $this->hasMany(MedicalRecordMedicine::class, 'medical_record_id');
     }
 }

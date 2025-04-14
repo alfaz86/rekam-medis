@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PatientResource\Pages;
 use App\Models\Patient;
 use App\Models\User;
+use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
@@ -21,7 +22,7 @@ class PatientResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-user';
     protected static ?string $modelLabel = 'Pasien';
     protected static ?string $pluralModelLabel = 'Data Pasien';
-    protected static ?string $navigationLabel = 'Pasien';
+    protected static ?string $navigationLabel = 'Daftar Pasien';
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -30,14 +31,49 @@ class PatientResource extends Resource
                 TextInput::make('number_identity')
                     ->label('No Identitas')
                     ->required()
-                    ->unique('patients', 'number_identity'),
-                TextInput::make('name')->label('Nama')->required(),
-                TextInput::make('husband_name')->label('Nama Suami')->nullable(),
-                TextInput::make('age')->label('Usia')->numeric()->required(),
-                DatePicker::make('birth_date')->label('Tanggal Lahir')->required(),
-                TextInput::make('birth_place')->label('Tempat Lahir')->required(),
-                TextInput::make('phone_number')->label('No HP')->nullable(),
-                Textarea::make('address')->label('Alamat')->required(),
+                    ->hidden(),
+
+                TextInput::make('name')
+                    ->label('Nama')
+                    ->required(),
+
+                TextInput::make('husband_name')
+                    ->label('Nama Suami')
+                    ->nullable(),
+
+                TextInput::make('age')
+                    ->label('Usia')
+                    ->numeric()
+                    ->required()
+                    ->hidden(),
+
+                DatePicker::make('birth_date')
+                    ->label('Tanggal Lahir')
+                    ->native(false)
+                    ->displayFormat('d-m-Y')
+                    ->format('Y-m-d')
+                    ->required(),
+
+                TextInput::make('birth_place')
+                    ->label('Tempat Lahir')
+                    ->default('-')
+                    ->hidden(),
+
+                TextInput::make('phone_number')
+                    ->label('No HP')
+                    ->nullable(),
+
+                Textarea::make('address')
+                    ->label('Alamat')
+                    ->required(),
+
+                DatePicker::make('created_at')
+                    ->label('Tanggal Daftar')
+                    ->required()
+                    ->native(false)
+                    ->displayFormat('d-m-Y')
+                    ->format('Y-m-d')
+                    ->default(now()),
             ]);
     }
 
@@ -46,12 +82,31 @@ class PatientResource extends Resource
         return $table
             ->recordUrl(null)
             ->columns([
-                TextColumn::make('number_identity')->label('No Identitas')->sortable()->searchable(),
-                TextColumn::make('name')->label('Nama')->sortable()->searchable(),
-                TextColumn::make('age')->label('Usia')->sortable(),
-                TextColumn::make('birth_date')->label('Tanggal Lahir')->sortable(),
-                TextColumn::make('phone_number')->label('No HP')->sortable(),
-                TextColumn::make('address')->label('Alamat')->limit(50),
+                TextColumn::make('name')
+                    ->label('Nama')
+                    ->sortable()
+                    ->searchable(),
+                TextColumn::make('birth_date')
+                    ->label('Tanggal Lahir')
+                    ->sortable()
+                    ->dateTime('d-m-Y')
+                    ->searchable(),
+                TextColumn::make('husband_name')
+                    ->label('Nama Suami')
+                    ->default('-')
+                    ->sortable()
+                    ->searchable(),
+                TextColumn::make('address')
+                    ->label('Alamat')
+                    ->limit(50),
+                TextColumn::make('phone_number')
+                    ->label('No HP')
+                    ->sortable(),
+                TextColumn::make('created_at')
+                    ->label('Tanggal Daftar')
+                    ->sortable()
+                    ->dateTime('d-m-Y')
+                    ->searchable(),
             ])
             ->filters([])
             ->actions([
@@ -97,7 +152,17 @@ class PatientResource extends Resource
             $data['phone_number'] = '-';
         }
         $data['user_id'] = $user->id;
+        $data['number_identity'] = self::generateNumberIdentity();
+        $data['birth_place'] = $data['address'];
+        $data['age'] = Carbon::parse($data['birth_date'])->age;
 
         return $data;
+    }
+
+    private static function generateNumberIdentity(): string
+    {
+        $timestamp = time();
+        $randomDigits = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT); // 6 digit
+        return $timestamp . $randomDigits;
     }
 }
