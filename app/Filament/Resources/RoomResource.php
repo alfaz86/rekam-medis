@@ -25,6 +25,7 @@ class RoomResource extends Resource
     protected static ?string $pluralModelLabel = 'Ruangan';
     protected static ?string $navigationLabel = 'Ruangan';
     protected static ?int $navigationSort = 5;
+    public static bool $shouldRegisterNavigation = false;
 
     public static function form(Form $form): Form
     {

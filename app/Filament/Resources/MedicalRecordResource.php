@@ -12,11 +12,16 @@ use App\Models\Patient;
 use App\Models\Room;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -48,47 +53,82 @@ class MedicalRecordResource extends Resource
                     )
                     ->getOptionLabelUsing(fn($value) => Patient::find($value)?->name)
                     ->required(),
+                Textarea::make('medical_history')
+                    ->label('Riwayat Kesehatan')
+                    ->required(),
                 Textarea::make('complaint')
                     ->label('Keluhan')
+                    ->required(),
+                Textarea::make('examination_results')
+                    ->label('Hasil Pemeriksaan')
+                    ->required(),
+                TextInput::make('diagnosis')
+                    ->label('Diagnosis')
                     ->required(),
                 Select::make('handled_by_id')
                     ->label('Bidan')
                     ->searchable()
                     ->getSearchResultsUsing(fn(string $search) => self::searchPatientCareTakers($search))
-                    ->getOptionLabelUsing(fn($value) => self::getPatientCareTakerLabel($value))
-                    ->required(),
-                TextInput::make('diagnosis')
-                    ->label('Diagnosis')
-                    ->required(),
-                Select::make('medicine_ids')
-                    ->label('Obat')
-                    ->multiple()
-                    ->searchable()
-                    ->getSearchResultsUsing(
-                        fn(string $search) =>
-                        Medicine::where('name', 'like', "%{$search}%")
-                            ->limit(10)
-                            ->pluck('name', 'id')
-                            ->toArray()
+                    ->getOptionLabelUsing(
+                        fn($record) =>
+                        self::getPatientCareTakerLabel($record->handled_by_type, $record->handled_by_id)
                     )
-                    ->getOptionLabelsUsing(
-                        fn(array $values) =>
-                        Medicine::whereIn('id', $values)
-                            ->pluck('name', 'id')
-                            ->toArray()
-                    )
-                    ->relationship('medicines', 'name')
-                    ->default(fn($record) => $record?->medicines->pluck('id')->toArray())
                     ->required(),
+                Textarea::make('medical_treatment')
+                    ->label('Tindakan Medis')
+                    ->required(),
+                Group::make([
+                    Repeater::make('medicineUsages')
+                        ->label('Obat')
+                        ->relationship('medicineUsages')
+                        ->schema([
+                            Select::make('medicine_id')
+                                ->label('Obat')
+                                ->relationship('medicine', 'name')
+                                ->searchable()
+                                ->options(
+                                    fn() => Medicine::latest()
+                                        ->limit(10)
+                                        ->pluck('name', 'id')
+                                )
+                                ->getSearchResultsUsing(function (string $search) {
+                                    return Medicine::where('name', 'like', "%{$search}%")
+                                        ->limit(10)
+                                        ->pluck('name', 'id');
+                                })
+                                ->getOptionLabelUsing(fn($value) => Medicine::find($value)?->name)
+                                ->required(),
+
+                            TextInput::make('usage')
+                                ->label('Aturan Pakai')
+                                ->placeholder(fn($livewire) => $livewire instanceof ListRecords ? '-' : 'misal: 1 tablet 3x sehari')
+                                ->required(),
+                        ])
+                        ->defaultItems(0)
+                        ->addActionLabel('Tambah Obat')
+                        ->columns(2)
+                        ->nullable(),
+
+                    Placeholder::make('')
+                        ->content('Tidak ada obat yang ditambahkan.')
+                        ->visible(
+                            fn(Get $get, $livewire) =>
+                            $livewire instanceof ListRecords && count($get('medicineUsages') ?? []) === 0
+                        ),
+                ])->columns(1),
                 Select::make('room_id')
                     ->label('Ruangan')
                     ->options(Room::all()->pluck('name', 'id'))
                     ->searchable()
-                    ->required(),
+                    ->required()
+                    ->hidden(),
                 DatePicker::make('date')
                     ->label('Tanggal')
                     ->required()
-                    ->default(now()),
+                    ->hidden(),
+                Textarea::make('consultation_and_follow_up')
+                    ->label('Konsultasi dan Tindak Lanjut')
+                    ->required(),
             ]);
     }
 
@@ -100,25 +140,34 @@ class MedicalRecordResource extends Resource
                     ->label('Pasien')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('medical_history')
+                    ->label('Riwayat Kesehatan')
+                    ->searchable()
+                    ->limit(30)
+                    ->sortable(),
                 TextColumn::make('complaint')
                     ->label('Keluhan')
                     ->searchable()
+                    ->limit(30)
                     ->sortable(),
-                TextColumn::make('handled_by_id')
-                    ->label('Bidan')
-                    ->formatStateUsing(fn($record) => $record->handledBy?->name)
+                TextColumn::make('examination_results')
+                    ->label('Hasil Pemeriksaan')
                     ->searchable()
+                    ->limit(30)
                     ->sortable(),
                 TextColumn::make('diagnosis')
                     ->label('Diagnosis')
                     ->searchable()
+                    ->limit(30)
                     ->sortable(),
-                TextColumn::make('room.name')
-                    ->label('Ruangan')
+                TextColumn::make('medical_treatment')
+                    ->label('Tindakan Medis')
                     ->searchable()
+                    ->limit(30)
                     ->sortable(),
                 TextColumn::make('date')
                     ->label('Tanggal')
+                    ->dateTime('d-m-Y')
                     ->searchable()
                     ->sortable(),
             ])
@@ -148,7 +197,6 @@ class MedicalRecordResource extends Resource
         return [
             'index' => Pages\ListMedicalRecords::route('/'),
             'create' => Pages\CreateMedicalRecord::route('/create'),
-            'edit' => Pages\EditMedicalRecord::route('/{record}/edit'),
         ];
     }
 
@@ -179,16 +227,8 @@ class MedicalRecordResource extends Resource
         return $doctors->merge($midwives)->toArray();
     }
 
-    public static function getPatientCareTakerLabel($value): ?string
+    public static function getPatientCareTakerLabel(string $model, int $id): ?string
     {
-        $parts = explode(':', $value);
-
-        if (count($parts) !== 2) {
-            return null;
-        }
-
-        [$model, $id] = $parts;
-
         return match ($model) {
             Doctor::class => Doctor::find($id)?->name,
             Midwife::class => Midwife::find($id)?->name,

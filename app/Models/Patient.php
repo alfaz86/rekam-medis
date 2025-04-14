@@ -18,7 +18,8 @@ class Patient extends Model
         'birth_place',
         'phone_number',
         'address',
-        'user_id'
+        'user_id',
+        'created_at',
     ];
 
     public static function boot()
