@@ -61,4 +61,20 @@ class User extends Authenticatable implements FilamentUser
     {
         return true;
     }
+
+    public function getFilamentAvatarUrl(): ?string
+    {
+        return $this->avatar_url ?? 'https://ui-avatars.com/api/?name=' . $this->getInitials() . '&color=FFFFFF&background=09090b';
+    }
+
+    private function getInitials(): string
+    {
+        $words = explode(' ', $this->name);
+
+        if (count($words) === 1) {
+            return strtoupper(substr($words[0], 0, 1));
+        }
+
+        return strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1));
+    }
 }
