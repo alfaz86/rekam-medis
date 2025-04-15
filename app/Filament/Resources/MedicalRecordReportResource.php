@@ -8,7 +8,9 @@ use App\Models\Patient;
 use App\Models\Doctor;
 use App\Models\Midwife;
 use App\Models\Room;
+use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Actions\Action as FormAction;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
@@ -31,56 +33,111 @@ class MedicalRecordReportResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('patient.name')->label('Pasien')->searchable()->sortable(),
-                TextColumn::make('complaint')->label('Keluhan')->searchable()->sortable(),
-                TextColumn::make('handled_by_id')
-                    ->label('Bidan')
-                    ->formatStateUsing(fn($record) => $record->handledBy?->name)
-                    ->searchable()->sortable(),
-                TextColumn::make('diagnosis')->label('Diagnosis')->searchable()->sortable(),
-                TextColumn::make('room.name')->label('Ruangan')->searchable()->sortable(),
-                TextColumn::make('date')->label('Tanggal')->sortable(),
+                TextColumn::make('patient.name')
+                    ->label('Pasien')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('medical_history')
+                    ->label('Riwayat Kesehatan')
+                    ->searchable()
+                    ->limit(30)
+                    ->sortable(),
+                TextColumn::make('complaint')
+                    ->label('Keluhan')
+                    ->searchable()
+                    ->limit(30)
+                    ->sortable(),
+                TextColumn::make('examination_results')
+                    ->label('Hasil Pemeriksaan')
+                    ->searchable()
+                    ->limit(30)
+                    ->sortable(),
+                TextColumn::make('diagnosis')
+                    ->label('Diagnosis')
+                    ->searchable()
+                    ->limit(30)
+                    ->sortable(),
+                TextColumn::make('medical_treatment')
+                    ->label('Tindakan Medis')
+                    ->searchable()
+                    ->limit(30)
+                    ->sortable(),
+                TextColumn::make('date')
+                    ->label('Tanggal')
+                    ->dateTime('d-m-Y')
+                    ->searchable()
+                    ->sortable(),
             ])
             ->filters([
-                SelectFilter::make('patient_id')->label('Nama Pasien')->options(
-                    Patient::pluck('name', 'id')->toArray()
-                ),
-                SelectFilter::make('handled_by_id')
-                    ->label('Bidan')
-                    ->options(
-                        fn() => self::getPatientCareTakerLabel()
-                    )
-                    ->query(function (array $data, Builder $query) {
-                        if (!$data['value'])
-                            return;
+                // SelectFilter::make('handled_by_id')
+                //     ->label('Bidan')
+                //     ->options(
+                //         fn() => self::getPatientCareTakerLabel()
+                //     )
+                //     ->query(function (array $data, Builder $query) {
+                //         if (!$data['value'])
+                //             return;
 
-                        if (!str_contains($data['value'], ':'))
-                            return;
+                //         if (!str_contains($data['value'], ':'))
+                //             return;
 
-                        [$type, $id] = explode(':', $data['value']);
+                //         [$type, $id] = explode(':', $data['value']);
 
-                        $query->where('handled_by_type', $type)
-                            ->where('handled_by_id', $id);
-                    }),
-                SelectFilter::make('room_id')->label('Ruangan')->options(
-                    Room::pluck('name', 'id')->toArray()
-                ),
+                //         $query->where('handled_by_type', $type)
+                //             ->where('handled_by_id', $id);
+                //     }),
+                // SelectFilter::make('room_id')->label('Ruangan')->options(
+                //     Room::pluck('name', 'id')->toArray()
+                // ),
                 Filter::make('date')
                     ->form([
-                        DatePicker::make('date_from'),
-                        DatePicker::make('date_until'),
+                        DatePicker::make('date_from')
+                            ->label('Dari Tanggal')
+                            ->native(false)
+                            ->displayFormat('d-m-Y')
+                            ->placeholder('dd-mm-yyyy')
+                            ->suffixAction(
+                                FormAction::make('clearDateFrom')
+                                    ->icon('heroicon-o-x-circle')
+                                    ->action(fn($state, callable $set) => $set('date_from', null))
+                                    ->visible(fn($state) => filled($state))
+                            ),
+                        DatePicker::make('date_until')
+                            ->label('Sampai Tanggal')
+                            ->native(false)
+                            ->displayFormat('d-m-Y')
+                            ->placeholder('dd-mm-yyyy')
+                            ->suffixAction(
+                                FormAction::make('clearDateUntil')
+                                    ->icon('heroicon-o-x-circle')
+                                    ->action(fn($state, callable $set) => $set('date_until', null))
+                                    ->visible(fn($state) => filled($state))
+                            ),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when($data['date_from'], fn(Builder $query, $date) => $query->whereDate('date', '>=', $date))
                             ->when($data['date_until'], fn(Builder $query, $date) => $query->whereDate('date', '<=', $date));
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+
+                        if ($data['date_from'] ?? false) {
+                            $indicators[] = 'Dari tanggal ' . Carbon::parse($data['date_from'])->format('d M Y');
+                        }
+
+                        if ($data['date_until'] ?? false) {
+                            $indicators[] = 'Sampai tanggal ' . Carbon::parse($data['date_until'])->format('d M Y');
+                        }
+
+                        return $indicators;
                     }),
             ])
             ->headerActions([
                 Action::make('print')
                     ->label('Print')
                     ->icon('heroicon-o-printer')
-                    ->url(fn($livewire) => route('print.records', [
+                    ->url(fn($livewire) => route('print.medical-record-reports', [
                         'filters' => $livewire->tableFilters,
                     ]), true),
             ]);
