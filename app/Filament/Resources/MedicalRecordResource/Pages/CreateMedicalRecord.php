@@ -6,6 +6,7 @@ use App\Filament\Resources\MedicalRecordResource;
 use App\Models\MedicalRecord;
 use App\Models\Room;
 use Filament\Actions;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateMedicalRecord extends CreateRecord
@@ -47,5 +48,25 @@ class CreateMedicalRecord extends CreateRecord
         }
 
         return $medicalRecord;
+    }
+
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getCreateFormAction(),
+            $this->getCancelFormAction(),
+        ];
+    }
+
+    protected function getCreateFormAction(): Action
+    {
+        return parent::getCreateFormAction()
+            ->label('Simpan');
+    }
+
+    protected function getCancelFormAction(): Action
+    {
+        return parent::getCancelFormAction()
+            ->label('Batal');
     }
 }
