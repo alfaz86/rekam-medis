@@ -28,6 +28,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Livewire\Livewire;
 
 class MedicalRecordResource extends Resource
 {
@@ -46,12 +47,16 @@ class MedicalRecordResource extends Resource
                     ->label('Pasien')
                     ->searchable()
                     ->getSearchResultsUsing(
-                        fn(string $search) =>
+                        fn(string $search, $livewire) =>
                         Patient::where('name', 'like', "%{$search}%")
+                            ->when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())
                             ->limit(10)
                             ->pluck('name', 'id')
                     )
-                    ->getOptionLabelUsing(fn($value) => Patient::find($value)?->name)
+                    ->getOptionLabelUsing(fn($value, $livewire) => Patient::when(
+                        $livewire instanceof ListRecords,
+                        fn($q) => $q->withTrashed()
+                    )->find($value)?->name)
                     ->required(),
                 Textarea::make('medical_history')
                     ->label('Riwayat Kesehatan')
@@ -68,10 +73,10 @@ class MedicalRecordResource extends Resource
                 Select::make('handled_by_id')
                     ->label('Bidan')
                     ->searchable()
-                    ->getSearchResultsUsing(fn(string $search) => self::searchPatientCareTakers($search))
+                    ->getSearchResultsUsing(fn(string $search, $livewire) => self::searchPatientCareTakers($search, $livewire))
                     ->getOptionLabelUsing(
-                        fn($record) =>
-                        self::getPatientCareTakerLabel($record->handled_by_type, $record->handled_by_id)
+                        fn($record, $livewire) =>
+                        self::getPatientCareTakerLabel($record->handled_by_type, $record->handled_by_id, $livewire)
                     )
                     ->required(),
                 Textarea::make('medical_treatment')
@@ -87,16 +92,18 @@ class MedicalRecordResource extends Resource
                                 ->relationship('medicine', 'name')
                                 ->searchable()
                                 ->options(
-                                    fn() => Medicine::latest()
+                                    fn($livewire) => Medicine::when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())
+                                        ->latest()
                                         ->limit(10)
                                         ->pluck('name', 'id')
                                 )
-                                ->getSearchResultsUsing(function (string $search) {
+                                ->getSearchResultsUsing(function (string $search, $livewire) {
                                     return Medicine::where('name', 'like', "%{$search}%")
+                                        ->when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())
                                         ->limit(10)
                                         ->pluck('name', 'id');
                                 })
-                                ->getOptionLabelUsing(fn($value) => Medicine::find($value)?->name)
+                                ->getOptionLabelUsing(fn($value, $livewire) => Medicine::when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())->find($value)?->name)
                                 ->required(),
 
                             TextInput::make('usage')
@@ -135,6 +142,11 @@ class MedicalRecordResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->query(MedicalRecord::query()
+                ->with([
+                    'patient' => fn($query) => $query->withTrashed(),
+                ])
+                ->latest())
             ->columns([
                 TextColumn::make('patient.name')
                     ->label('Pasien')
@@ -175,7 +187,15 @@ class MedicalRecordResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->record(function ($record) {
+                        return $record->loadMissing([
+                            'handledBy' => fn($query) => $query->withTrashed(),
+                            'patient' => fn($query) => $query->withTrashed(),
+                            'room',
+                            'medicineUsages.medicine' => fn($query) => $query->withTrashed(),
+                        ]);
+                    }),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -200,7 +220,7 @@ class MedicalRecordResource extends Resource
         ];
     }
 
-    public static function searchPatientCareTakers(string $search): array
+    public static function searchPatientCareTakers(string $search, $livewire): array
     {
         $doctors = collect();
         $midwives = collect();
@@ -208,6 +228,7 @@ class MedicalRecordResource extends Resource
 
         if (in_array('doctors', $PCP)) {
             $doctors = Doctor::where('name', 'like', "%{$search}%")
+                ->when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())
                 ->limit(10)
                 ->get()
                 ->mapWithKeys(fn($doctor) => [
@@ -217,6 +238,7 @@ class MedicalRecordResource extends Resource
 
         if (in_array('midwives', $PCP)) {
             $midwives = Midwife::where('name', 'like', "%{$search}%")
+                ->when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())
                 ->limit(10)
                 ->get()
                 ->mapWithKeys(fn($midwife) => [
@@ -227,11 +249,11 @@ class MedicalRecordResource extends Resource
         return $doctors->merge($midwives)->toArray();
     }
 
-    public static function getPatientCareTakerLabel(string $model, int $id): ?string
+    public static function getPatientCareTakerLabel(string $model, int $id, $livewire): ?string
     {
         return match ($model) {
-            Doctor::class => Doctor::find($id)?->name,
-            Midwife::class => Midwife::find($id)?->name,
+            Doctor::class => Doctor::when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())->find($id)?->name,
+            Midwife::class => Midwife::when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())->find($id)?->name,
             default => null
         };
     }

@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasSoftDeleteSuffix;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Midwife extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes, HasSoftDeleteSuffix;
 
     protected $fillable = [
         'name',
@@ -19,12 +21,6 @@ class Midwife extends Model
     public static function boot()
     {
         parent::boot();
-
-        static::deleting(function ($midwife) {
-            if ($midwife->user) {
-                $midwife->user->delete();
-            }
-        });
     }
 
     public function user()
