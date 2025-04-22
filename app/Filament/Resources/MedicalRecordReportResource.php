@@ -32,6 +32,9 @@ class MedicalRecordReportResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->query(MedicalRecord::with([
+                'patient' => fn($query) => $query->withTrashed(),
+            ]))
             ->columns([
                 TextColumn::make('patient.name')
                     ->label('Pasien')

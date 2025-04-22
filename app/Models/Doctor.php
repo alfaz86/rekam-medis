@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasSoftDeleteSuffix;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Doctor extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes, HasSoftDeleteSuffix;
 
     protected $fillable = [
         'name',
@@ -20,12 +22,6 @@ class Doctor extends Model
     public static function boot()
     {
         parent::boot();
-
-        static::deleting(function ($doctor) {
-            if ($doctor->user) {
-                $doctor->user->delete();
-            }
-        });
     }
 
     public function user()

@@ -10,7 +10,18 @@ class ReportController extends Controller
 {
     public function printMedicalRecordReport(Request $request)
     {
-        $query = MedicalRecord::query()->with(['patient', 'handledBy', 'room', 'medicines', 'medicineUsages']);
+        $query = MedicalRecord::query()->with([
+            'patient' => function ($query) {
+                $query->withTrashed();
+            },
+            'handledBy' => function ($query) {
+                $query->withTrashed();
+            },
+            'room',
+            'medicineUsages.medicine' => function ($query) {
+                $query->withTrashed();
+            },
+        ]);
         $filters = $request->input('filters', []);
 
         if (!empty($filters['date']['date_from']) && !empty($filters['date']['date_until'])) {
