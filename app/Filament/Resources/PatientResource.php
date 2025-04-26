@@ -7,14 +7,21 @@ use App\Models\Patient;
 use App\Models\User;
 use Carbon\Carbon;
 use Filament\Forms;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\View;
 use Filament\Tables;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\ActionGroup;
+use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Resources\Resource;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 
 class PatientResource extends Resource
 {
@@ -28,10 +35,62 @@ class PatientResource extends Resource
     {
         return $form
             ->schema([
+                Grid::make(12)->schema([
+                    Select::make('search')
+                        ->label('Cari Pasien')
+                        ->placeholder('Cari berdasarkan nama atau no identitas')
+                        ->searchable()
+                        ->getSearchResultsUsing(function (string $search) {
+                            return Patient::query()
+                                ->where('name', 'like', '%' . $search . '%')
+                                ->orWhere('number_identity', 'like', '%' . $search . '%')
+                                ->limit(10)
+                                ->get()
+                                ->mapWithKeys(fn($patient) => [
+                                    $patient->id => "{$patient->name} - {$patient->number_identity}",
+                                ])
+                                ->toArray();
+                        })
+                        ->getOptionLabelUsing(fn($value) => optional(Patient::find($value))->name ?? null)
+                        ->reactive()
+                        ->afterStateUpdated(function (callable $set, $state) {
+                            if ($state) {
+                                $patient = Patient::find($state);
+                                if ($patient) {
+                                    $set('name', $patient->name);
+                                    $set('number_identity', $patient->number_identity);
+                                    $set('husband_name', $patient->husband_name);
+                                    $set('birth_date', $patient->birth_date);
+                                    $set('birth_place', $patient->birth_place);
+                                    $set('phone_number', $patient->phone_number);
+                                    $set('address', $patient->address);
+                                }
+                            } else {
+                                $set('name', null);
+                                $set('number_identity', self::generateNumberIdentity());
+                                $set('husband_name', null);
+                                $set('birth_date', null);
+                                $set('birth_place', null);
+                                $set('phone_number', null);
+                                $set('address', null);
+                            }
+                        })
+                        ->hidden(fn($livewire) => $livewire instanceof Pages\EditPatient)
+                        ->columnSpan(6),
+                ]),
+
+                Grid::make(12)->schema([
+                    View::make('components.loading-patient')
+                        ->visible(fn() => true)
+                        ->hidden(fn($livewire) => $livewire instanceof Pages\EditPatient)
+                        ->columnSpan(6),
+                ]),
+
                 TextInput::make('number_identity')
-                    ->label('No Identitas')
-                    ->required()
-                    ->hidden(),
+                    ->label('No Regis')
+                    ->default(self::generateNumberIdentity())
+                    ->readOnly()
+                    ->required(),
 
                 TextInput::make('name')
                     ->label('Nama')
@@ -110,12 +169,35 @@ class PatientResource extends Resource
             ])
             ->filters([])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                ActionGroup::make([
+                    Tables\Actions\EditAction::make()
+                        ->color('primary'),
+                    Tables\Actions\DeleteAction::make(),
+                    Action::make('print')
+                        ->label('Print')
+                        ->icon('heroicon-o-printer')
+                        ->color('primary')
+                        ->url(fn($record) => route('print.patient', [
+                            'id' => $record->id,
+                        ]), true),
+                ])
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    BulkAction::make('print')
+                        ->label('Print yang dipilih')
+                        ->icon('heroicon-o-printer')
+                        ->color('primary')
+                        ->action(function (Collection $records) {
+                            $ids = implode(',', $records->pluck('id')->toArray());
+                            $encodedIds = base64_encode($ids);
+
+                            return redirect()->route('print.patients', [
+                                'ids' => $encodedIds,
+                            ]);
+                        })
+                        ->openUrlInNewTab(),
                 ]),
             ]);
     }
@@ -152,7 +234,6 @@ class PatientResource extends Resource
             $data['phone_number'] = '-';
         }
         $data['user_id'] = $user->id;
-        $data['number_identity'] = self::generateNumberIdentity();
         $data['birth_place'] = $data['address'];
         $data['age'] = Carbon::parse($data['birth_date'])->age;
 
@@ -163,6 +244,49 @@ class PatientResource extends Resource
     {
         $timestamp = time();
         $randomDigits = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT); // 6 digit
-        return $timestamp . $randomDigits;
+        return $randomDigits . $timestamp;
+    }
+
+    public function printPatient($id)
+    {
+        $patients = Patient::whereIn('id', [$id])->get();
+        $letterhead = self::getLetterhead();
+
+        return view('patient.print', compact('patients', 'letterhead'));
+    }
+
+    public function printPatients(Request $request)
+    {
+        $encodedIds = $request->get('ids', '');
+        $ids = explode(',', base64_decode($encodedIds));
+        $patients = Patient::whereIn('id', $ids)->get();
+        $letterhead = self::getLetterhead();
+
+        return view('patient.print', compact('patients', 'letterhead'));
+    }
+
+    public function getLetterhead(): array
+    {
+        $title = env('LETTERHEAD_TITLE', 'title');
+        $name = env('LETTERHEAD_NAME', 'name');
+        $address = self::getLetterheadAddressLines();
+
+        return [
+            'title' => $title,
+            'name' => $name,
+            'address' => $address,
+        ];
+    }
+
+    public function getLetterheadAddressLines(): array
+    {
+        $addressString = env('LETTERHEAD_ADDRESS', 'address');
+        $addressParts = preg_split('/\s*~nl\s*/', $addressString, -1, PREG_SPLIT_NO_EMPTY);
+        $addressLines = [];
+        foreach ($addressParts as $index => $part) {
+            $addressLines['line' . ($index + 1)] = trim($part);
+        }
+
+        return $addressLines;
     }
 }
