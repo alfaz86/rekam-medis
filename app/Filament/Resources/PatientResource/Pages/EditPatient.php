@@ -14,6 +14,13 @@ class EditPatient extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('print')
+                ->label('Print')
+                ->icon('heroicon-o-printer')
+                ->color('primary')
+                ->url(fn($record) => route('print.patient', [
+                    'id' => $record->id,
+                ]), true),
             Actions\DeleteAction::make(),
         ];
     }

@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PatientResource\Pages;
 use App\Models\Patient;
 use App\Models\User;
+use App\Traits\HasLetterheadPrint;
 use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Components\Grid;
@@ -25,6 +26,8 @@ use Illuminate\Support\Facades\Hash;
 
 class PatientResource extends Resource
 {
+    use HasLetterheadPrint;
+
     protected static ?string $model = Patient::class;
     protected static ?string $navigationIcon = 'heroicon-o-user';
     protected static ?string $modelLabel = 'Pasien';
@@ -189,15 +192,15 @@ class PatientResource extends Resource
                         ->label('Print yang dipilih')
                         ->icon('heroicon-o-printer')
                         ->color('primary')
-                        ->action(function (Collection $records) {
+                        ->action(function (Collection $records, $livewire) {
                             $ids = implode(',', $records->pluck('id')->toArray());
                             $encodedIds = base64_encode($ids);
-
-                            return redirect()->route('print.patients', [
+                            $url = route('print.patients', [
                                 'ids' => $encodedIds,
                             ]);
-                        })
-                        ->openUrlInNewTab(),
+
+                            $livewire->js("window.open('{$url}', '_blank')");
+                        }),
                 ]),
             ]);
     }
@@ -250,7 +253,7 @@ class PatientResource extends Resource
     public function printPatient($id)
     {
         $patients = Patient::whereIn('id', [$id])->get();
-        $letterhead = self::getLetterhead();
+        $letterhead = $this->getLetterhead();
 
         return view('patient.print', compact('patients', 'letterhead'));
     }
@@ -260,33 +263,8 @@ class PatientResource extends Resource
         $encodedIds = $request->get('ids', '');
         $ids = explode(',', base64_decode($encodedIds));
         $patients = Patient::whereIn('id', $ids)->get();
-        $letterhead = self::getLetterhead();
+        $letterhead = $this->getLetterhead();
 
         return view('patient.print', compact('patients', 'letterhead'));
-    }
-
-    public function getLetterhead(): array
-    {
-        $title = env('LETTERHEAD_TITLE', 'title');
-        $name = env('LETTERHEAD_NAME', 'name');
-        $address = self::getLetterheadAddressLines();
-
-        return [
-            'title' => $title,
-            'name' => $name,
-            'address' => $address,
-        ];
-    }
-
-    public function getLetterheadAddressLines(): array
-    {
-        $addressString = env('LETTERHEAD_ADDRESS', 'address');
-        $addressParts = preg_split('/\s*~nl\s*/', $addressString, -1, PREG_SPLIT_NO_EMPTY);
-        $addressLines = [];
-        foreach ($addressParts as $index => $part) {
-            $addressLines['line' . ($index + 1)] = trim($part);
-        }
-
-        return $addressLines;
     }
 }
