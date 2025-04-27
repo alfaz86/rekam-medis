@@ -4,10 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\MedicalRecordReportResource\Pages\ListMedicalRecordReport;
 use App\Models\MedicalRecord;
-use App\Models\Patient;
 use App\Models\Doctor;
 use App\Models\Midwife;
-use App\Models\Room;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Actions\Action as FormAction;
@@ -15,7 +13,6 @@ use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 

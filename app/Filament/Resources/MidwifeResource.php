@@ -4,13 +4,11 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\MidwifeResource\Pages;
 use App\Models\Midwife;
-use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables;
 use Filament\Resources\Resource;
-use Illuminate\Support\Facades\Hash;
 
 class MidwifeResource extends Resource
 {

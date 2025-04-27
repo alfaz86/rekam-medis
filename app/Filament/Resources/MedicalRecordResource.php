@@ -3,14 +3,13 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\MedicalRecordResource\Pages;
-use App\Filament\Resources\MedicalRecordResource\RelationManagers;
 use App\Models\Doctor;
 use App\Models\MedicalRecord;
 use App\Models\Medicine;
 use App\Models\Midwife;
 use App\Models\Patient;
 use App\Models\Room;
-use Filament\Forms;
+use App\Traits\HasLetterheadPrint;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Placeholder;
@@ -20,18 +19,17 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Livewire\Livewire;
 
 class MedicalRecordResource extends Resource
 {
+    use HasLetterheadPrint;
+
     protected static ?string $model = MedicalRecord::class;
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
     protected static ?string $modelLabel = 'Rekam Medis';
@@ -187,16 +185,38 @@ class MedicalRecordResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make()
-                    ->record(function ($record) {
-                        return $record->loadMissing([
-                            'handledBy' => fn($query) => $query->withTrashed(),
-                            'patient' => fn($query) => $query->withTrashed(),
-                            'room',
-                            'medicineUsages.medicine' => fn($query) => $query->withTrashed(),
-                        ]);
-                    }),
-                Tables\Actions\DeleteAction::make(),
+                ActionGroup::make([
+                    Tables\Actions\ViewAction::make()
+                        ->record(function ($record) {
+                            return $record->loadMissing([
+                                'handledBy' => fn($query) => $query->withTrashed(),
+                                'patient' => fn($query) => $query->withTrashed(),
+                                'room',
+                                'medicineUsages.medicine' => fn($query) => $query->withTrashed(),
+                            ]);
+                        })
+                        ->extraModalFooterActions([
+                            Tables\Actions\DeleteAction::make()
+                                ->label('Delete')
+                                ->color('danger'),
+                            Tables\Actions\Action::make('print')
+                                ->label('Print')
+                                ->icon('heroicon-o-printer')
+                                ->color('primary')
+                                ->url(fn(Tables\Actions\Action $action, $record) => route('print.medical-record', [
+                                    'id' => $record->id,
+                                ]), true),
+                        ])
+                        ->modalFooterActionsAlignment('end'),
+                    Tables\Actions\Action::make('print')
+                        ->label('Print')
+                        ->icon('heroicon-o-printer')
+                        ->color('primary')
+                        ->url(fn(Tables\Actions\Action $action, $record) => route('print.medical-record', [
+                            'id' => $record->id,
+                        ]), true),
+                    Tables\Actions\DeleteAction::make(),
+                ])
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -256,5 +276,21 @@ class MedicalRecordResource extends Resource
             Midwife::class => Midwife::when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())->find($id)?->name,
             default => null
         };
+    }
+
+    public function printMedicalRecord($id)
+    {
+        $medicalRecords = MedicalRecord::with([
+            'patient' => fn($query) => $query->withTrashed(),
+            'handledBy' => fn($query) => $query->withTrashed(),
+            'room',
+            'medicineUsages.medicine' => fn($query) => $query->withTrashed(),
+        ])->whereIn('id', [$id])->get();
+        $letterhead = $this->getLetterhead();
+
+        return view('medical-record.print', [
+            'medicalRecords' => $medicalRecords,
+            'letterhead' => $letterhead,
+        ]);
     }
 }

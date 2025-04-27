@@ -22,7 +22,7 @@
             gap: 10px;
         }
         .kop-surat img {
-            width: 48px;
+            width: 54px;
         }
         .kop-surat-text {
             text-align: center;
@@ -48,6 +48,7 @@
         }
         .patient-section {
             margin-bottom: 40px;
+            page-break-inside: avoid; /* Hindari pemotongan di tengah halaman */
         }
         .patient-info {
             width: 100%;
@@ -72,17 +73,20 @@
             border-bottom: 1px dashed black;
             padding-left: 5px;
         }
-        .footer {
+        .patient-footer {
             text-align: center;
             margin-top: 50px;
             font-weight: bold;
         }
+        @media print {
+            .patient-section:last-child {
+                page-break-after: auto;
+            }
+        }
     </style>
 </head>
 <body>
-
     <div class="content">
-
         @foreach ($patients as $patient)
             <div class="patient-section">
                 <!-- Kop surat -->
@@ -90,10 +94,11 @@
                     <div class="kop-surat">
                         <img src="{{ asset('images/logo-IDI.png') }}" alt="Logo">
                         <div class="kop-surat-text">
-                            <p>Praktik Dokter Umum</p>
-                            <p class="bold">dr. ANDIKA BAYANGKARA</p>
-                            <span>Winanegara Kel. Teluk Merbau RT.001 RW.003</span>
-                            <span>Kecamatan Dayun Kabupaten Siak</span>
+                            <p>{{ $letterhead['title'] }}</p>
+                            <p class="bold">{{ $letterhead['name'] }}</p>
+                            @foreach ($letterhead['address'] as $item)
+                                <span>{{ $item }}</span>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -122,14 +127,13 @@
                     </tr>
                 </table>
             </div>
+            
+            <!-- Footer -->
+            <div class="patient-footer">
+                <p>KARTU HARAP DIBAWA SETIAP BEROBAT</p>
+            </div>
         @endforeach
-
     </div>
-
-    <div class="footer">
-        <p>KARTU HARAP DIBAWA SETIAP BEROBAT</p>
-    </div>
-
     <script>
         window.onload = function() {
             window.print();
