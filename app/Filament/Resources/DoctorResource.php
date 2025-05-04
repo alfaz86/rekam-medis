@@ -55,7 +55,7 @@ class DoctorResource extends Resource
                 TextInput::make('specialist')->label('Spesialis')->required(),
                 TextInput::make('password')->password()->label('Password')->required(
                     fn($record) => is_null(optional($record?->user)->id)
-                ),
+                )->revealable(true),
                 TextInput::make('phone_number')->label('No HP')->nullable(),
                 Textarea::make('address')->label('Alamat')->nullable(),
             ]);
