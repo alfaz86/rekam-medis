@@ -40,7 +40,7 @@ class MidwifeResource extends Resource
                 TextInput::make('phone_number')->label('No HP')->nullable(),
                 TextInput::make('password')->password()->label('Password')->required(
                     fn($record) => is_null(optional($record?->user)->id)
-                ),
+                )->revealable(true),
                 Textarea::make('address')->label('Alamat')->nullable(),
             ]);
     }

@@ -79,11 +79,40 @@
             padding: 5px;
             text-align: left;
         }
+        .print-div {
+            width: 100%;
+            display: none;
+            text-align: center;
+            margin: auto;
+        }
+        .print-div button {
+            width: 100%;
+            background-color: #D97706;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 16px 8px;
+        }
+        .print-div button:hover {
+            background-color: #F59E0B;
+        }
+        @media print {
+            thead {
+                display: table-row-group;
+            }
+            .print-div {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
-
-    <div class="content">
+    <div class="print-div" id="printButton">
+        <button onclick="window.print()">Cetak Halaman</button>
+    </div>
 
         @foreach ($medicalRecords as $medicalRecord)
             <div class="medical-medicalRecord-section">
@@ -188,12 +217,16 @@
     </div>
 
     <script>
-        window.onload = function() {
+        const isDesktop = window.innerWidth >= 768 && !/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        if (isDesktop) {
             window.print();
             window.onafterprint = function() {
                 window.close();
             };
-        };
+        } else {
+            document.getElementById('printButton').style.display = 'block';
+        }
     </script>
 </body>
 </html>
