@@ -54,6 +54,10 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->defaultAvatarProvider(CustomAvatarProvider::class);
+            ->defaultAvatarProvider(CustomAvatarProvider::class)
+            ->brandLogo(fn() => view(
+                'filament.sidebar.logo',
+                []
+            ));
     }
 }
