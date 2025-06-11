@@ -40,7 +40,7 @@ class PatientResource extends Resource
             ->schema([
                 Grid::make(12)->schema([
                     Select::make('search')
-                        ->label('Cari Pasien')
+                        ->label('Cari Pasien Lama')
                         ->placeholder('Cari berdasarkan nama atau no identitas')
                         ->searchable()
                         ->getSearchResultsUsing(function (string $search) {
