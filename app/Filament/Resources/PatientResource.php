@@ -45,8 +45,8 @@ class PatientResource extends Resource
                         ->searchable()
                         ->getSearchResultsUsing(function (string $search) {
                             return Patient::query()
-                                ->where('name', 'like', '%' . $search . '%')
-                                ->orWhere('number_identity', 'like', '%' . $search . '%')
+                                ->where('name', config('database.like_operator'), '%' . $search . '%')
+                                ->orWhere('number_identity', config('database.like_operator'), '%' . $search . '%')
                                 ->limit(10)
                                 ->get()
                                 ->mapWithKeys(fn($patient) => [
