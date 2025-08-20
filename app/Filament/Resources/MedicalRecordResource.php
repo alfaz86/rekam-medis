@@ -46,7 +46,7 @@ class MedicalRecordResource extends Resource
                     ->searchable()
                     ->getSearchResultsUsing(
                         fn(string $search, $livewire) =>
-                        Patient::where('name', 'like', "%{$search}%")
+                        Patient::where('name', config('database.like_operator'), "%{$search}%")
                             ->when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())
                             ->limit(10)
                             ->pluck('name', 'id')
@@ -96,7 +96,7 @@ class MedicalRecordResource extends Resource
                                         ->pluck('name', 'id')
                                 )
                                 ->getSearchResultsUsing(function (string $search, $livewire) {
-                                    return Medicine::where('name', 'like', "%{$search}%")
+                                    return Medicine::where('name', config('database.like_operator'), "%{$search}%")
                                         ->when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())
                                         ->limit(10)
                                         ->pluck('name', 'id');
@@ -198,7 +198,10 @@ class MedicalRecordResource extends Resource
                         ->extraModalFooterActions([
                             Tables\Actions\DeleteAction::make()
                                 ->label('Delete')
-                                ->color('danger'),
+                                ->color('danger')
+                                ->after(function ($record, $livewire) {
+                                    return redirect(MedicalRecordResource::getUrl());
+                                }),
                             Tables\Actions\Action::make('print')
                                 ->label('Print')
                                 ->icon('heroicon-o-printer')
@@ -247,7 +250,7 @@ class MedicalRecordResource extends Resource
         $PCP = explode(',', env('PCP', 'doctors'));
 
         if (in_array('doctors', $PCP)) {
-            $doctors = Doctor::where('name', 'like', "%{$search}%")
+            $doctors = Doctor::where('name', config('database.like_operator'), "%{$search}%")
                 ->when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())
                 ->limit(10)
                 ->get()
@@ -257,7 +260,7 @@ class MedicalRecordResource extends Resource
         }
 
         if (in_array('midwives', $PCP)) {
-            $midwives = Midwife::where('name', 'like', "%{$search}%")
+            $midwives = Midwife::where('name', config('database.like_operator'), "%{$search}%")
                 ->when($livewire instanceof ListRecords, fn($q) => $q->withTrashed())
                 ->limit(10)
                 ->get()
